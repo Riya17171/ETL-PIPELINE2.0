@@ -11,11 +11,12 @@
 3. [How It Works](#how-it-works)
 4. [Presentation to Jury](#presentation-to-jury)
 5. [Quick Start Guide](#quick-start-guide)
-6. [Detailed Setup](#detailed-setup)
-7. [Architecture & Components](#architecture--components)
-8. [How to Run](#how-to-run)
-9. [Schema & Data Types](#schema--data-types)
-10. [Troubleshooting](#troubleshooting)
+6. [Preview the Pipeline](#preview-the-pipeline)
+7. [Detailed Setup](#detailed-setup)
+8. [Architecture & Components](#architecture--components)
+9. [How to Run](#how-to-run)
+10. [Schema & Data Types](#schema--data-types)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -23,15 +24,15 @@
 
 ### 🎯 What This Project Does
 
-This is a **complete ETL (Extract, Transform, Load) pipeline** that takes messy, unstructured files containing mixed formats (HTML, JSON, plain text, and Base64) and converts them into clean, structured, analyzable data.
+This project ships with a **dynamic ETL (Extract, Transform, Load) platform** that ingests unpredictable, unstructured files (.txt / .md / .pdf) and automatically evolves a schema as the data changes. Everything runs locally: extracted records land in MongoDB (or the offline `mongomock` fallback), schemas are versioned on disk, and natural language queries are translated via an on-device LLM.
 
 **Key Principles:**
-- ✅ **No APIs** - Pure Python file processing
-- ✅ **No fancy databases** - Just straightforward logic
-- ✅ **No complex setup** - One pip command
-- ✅ **No backend knowledge needed** - Menu-based CLI
-- ✅ **Local storage only** - Privacy-first approach
-- ✅ **Works immediately** - Run `python main.py`
+- ✅ **Dynamic schema evolution** – automatic diffing and migration notes on every upload
+- ✅ **Local MongoDB storage** – persists records nearby with zero external dependencies
+- ✅ **Schema download API** – fetch any schema version straight from the server
+- ✅ **LLM-assisted querying** – natural language → MongoDB queries via GPT4All (with a deterministic fallback when no model file is supplied)
+- ✅ **Privacy-first** – user data never leaves the machine
+- ✅ **Fast start** – `python app.py` launches the API; the legacy CLI remains available via `main.py`
 
 ### 💡 Real-World Use Cases
 
@@ -58,40 +59,29 @@ This is a **complete ETL (Extract, Transform, Load) pipeline** that takes messy,
 ```
 ETL-Pipeline/
 │
-├── 📄 main.py                        [ENTRY POINT]
-│   └─ Interactive menu-based CLI
-│   └─ Process files, watch mode, view outputs
+├── 📄 app.py                         [API SERVER]
+│   └─ Implements /upload, /schema, /schema/history, /schema/download, /records, /query
+│   └─ Requires only local MongoDB (falls back to mongomock automatically)
 │
-├── 📄 etl_pipeline.py                [CORE ENGINE]
-│   └─ Read files (handles encoding issues)
-│   └─ Detect HTML, JSON, text, base64
-│   └─ Extract structured data
-│   └─ Infer dynamic schema
-│   └─ Normalize and clean data
-│   └─ Load to CSV, JSON, SQLite
+├── 📁 dynamic_etl/                  [DYNAMIC ENGINE]
+│   ├─ ingestion.py                 ← TXT/MD/PDF ingestion with pdfplumber
+│   ├─ parsers.py                   ← Regex + BeautifulSoup + pandas extractors
+│   ├─ schema.py                    ← Schema inference + Postgres DDL generator
+│   ├─ storage.py                   ← Mongo persistence + local JSON snapshots
+│   └─ llm.py / pipeline.py         ← Query translation + orchestration
 │
-├── 📄 app.py                         [WEB INTERFACE - Optional]
-│   └─ Flask web server
-│   └─ Connects to index.html
-│   └─ API endpoints for processing
+├── 📄 main.py                        [LEGACY CLI]
+│   └─ Still available for offline demos if needed
 │
-├── 📄 index.html                     [FRONTEND - Optional]
-│   └─ Beautiful web UI
-│   └─ Drag-and-drop file upload
-│   └─ Live results display
-│   └─ CSV export button
+├── 📁 inputs/                        [OPTIONAL CACHE]
+│   └─ Uploads are processed in-memory, but this folder can store manual tests
 │
-├── 📁 inputs/                        [INPUT FOLDER]
-│   └─ Drop your files here to process
-│
-├── 📁 outputs/                       [OUTPUT FOLDER]
-│   ├─ cleaned_output.csv            ← MAIN RESULT (Open in Excel)
-│   ├─ dynamic_schema.json           ← Field definitions
-│   ├─ processing_metadata.json      ← Statistics and metadata
-│   └─ etl_data.db                   ← Optional SQLite database
+├── 📁 outputs/                       [LOCAL SNAPSHOTS]
+│   ├─ schemas/<source_id>/schema_v#.json  ← Downloadable schema versions
+│   └─ records/<source_id>/records_v#.json ← Versioned record dumps
 │
 ├── 📄 requirement.txt                [DEPENDENCIES]
-│   └─ pandas, beautifulsoup4, lxml, watchdog, flask, flask-cors
+│   └─ pandas, beautifulsoup4, lxml, pdfplumber, pymongo, mongomock, regex, gpt4all…
 │
 └── 📄 sample_data.txt                [TEST FILE]
     └─ Pre-made test data with mixed formats
@@ -100,6 +90,56 @@ ETL-Pipeline/
 ---
 
 ## HOW IT WORKS
+
+### 🏗️ Complete Processing Pipeline
+
+```
+UPLOAD (.txt / .md / .pdf)
+        ↓
+   [STEP 1: INGEST]
+   pdfplumber + encoding fallbacks turn every file into analysable text
+        ↓
+   [STEP 2: PARSE]
+   Regex, BeautifulSoup, pandas extract JSON blobs, HTML tables, CSV, YAML, key-value pairs & clean text
+        ↓
+   [STEP 3: SCHEMA]
+   SchemaGenerator inspects every field, emits Mongo/Postgres compatible metadata and diffs
+        ↓
+   [STEP 4: STORE]
+   Records & schemas saved to MongoDB and mirrored locally under outputs/
+        ↓
+   [STEP 5: QUERY]
+   Natural language → GPT4All (or fallback) → MongoDB query → `/query` response
+```
+
+### 🔌 API QUICK START
+
+1. **Install dependencies** – `pip install -r requirement.txt`
+2. **(Optional) Start MongoDB** – otherwise `mongomock` keeps everything in-memory.
+3. **Launch the API** – `python app.py`
+4. **Upload data** – `curl -X POST http://127.0.0.1:8000/upload -F "source_id=example" -F "file=@sample_data.txt"`
+5. **Review schema & history** – `/schema`, `/schema/history`, `/schema/download`
+6. **Ask natural language questions** – POST to `/query`
+7. **Fetch stored query results** – `/records?source_id=...&query_id=...`
+
+## PREVIEW THE PIPELINE
+
+Need a quick demo without wiring up the API? Run the lightweight preview helper:
+
+```bash
+python preview.py sample_data.txt --source-id demo
+```
+
+The script prints the fragment summary, the generated schema, a sample of the normalized records,
+and the exact locations of the downloadable schema and record snapshots under `outputs/`. Re-run it
+with evolving files (or a different `--source-id`) to watch schema versions increment locally.
+
+---
+
+### 🤖 LOCAL LLM SETUP
+
+- Place a GPT4All-compatible `.gguf` file locally and set `LLM_MODEL_PATH` before running `python app.py`.
+- Without a model the translator falls back to deterministic heuristics so everything still runs offline.
 
 ### 🏗️ Complete Processing Pipeline
 
