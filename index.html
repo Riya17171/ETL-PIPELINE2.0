@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- v2.1 - Fixed schema display to use types object keys -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ETL Pipeline - Data Processing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .loader {
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .badge-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-string {
+            background-color: #dbeafe;
+            color: #0c4a6e;
+        }
+        .badge-number {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .badge-array {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .badge-boolean {
+            background-color: #f3e8ff;
+            color: #6d28d9;
+        }
+        .badge-datetime {
+            background-color: #ede9fe;
+            color: #5b21b6;
+        }
+        .badge-other {
+            background-color: #fce7f3;
+            color: #be185d;
+        }
+        .schema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        .schema-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.2s;
+        }
+        .schema-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen py-8 px-4">
+        <div class="container mx-auto max-w-7xl">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-5xl font-bold text-white mb-4">ETL Pipeline</h1>
+                <p class="text-xl text-white/90">Extract, Transform & Load Your Data Instantly</p>
+            </div>
+
+            <!-- Main Card -->
+            <div class="glass rounded-2xl shadow-2xl p-8 mb-8">
+                <!-- Upload Section -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Step 1: Upload or Paste Data</h2>
+                    
+                    <!-- Drop Zone -->
+                    <div id="drop-zone" class="relative border-2 border-dashed border-blue-300 rounded-xl p-12 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+                        <div class="flex flex-col items-center justify-center">
+                            <svg class="w-16 h-16 text-blue-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                            </svg>
+                            <p class="text-lg"><span class="font-bold text-blue-600">Click to upload</span> or drag and drop</p>
+                            <p class="text-sm text-gray-500 mt-1">Supports .txt, .html, .json, .csv and more</p>
+                        </div>
+                        <input id="file-input" type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
+                    
+                    <div class="my-6 flex items-center">
+                        <div class="flex-grow border-t-2 border-gray-300"></div>
+                        <span class="flex-shrink mx-4 text-gray-500 font-semibold">OR</span>
+                        <div class="flex-grow border-t-2 border-gray-300"></div>
+                    </div>
+                    
+                    <!-- Textarea -->
+                    <label for="input-data" class="block text-sm font-semibold text-gray-700 mb-2">Paste Text Directly</label>
+                    <textarea id="input-data" rows="8"
+                        class="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition font-mono text-sm resize-none"
+                        placeholder="Paste your data here (HTML, JSON, CSV, plain text, etc.)..."></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-4 mb-8">
+                    <button id="process-btn" class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                        <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Process Data
+                    </button>
+                    <button id="clear-btn" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-all duration-200">
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Quick Sample Data Buttons -->
+                <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="text-sm font-semibold text-gray-700 mb-3">Try these samples:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <button onclick="loadSampleJSON()" class="px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded font-medium transition">
+                            JSON Sample (8 Fields)
+                        </button>
+                        <button onclick="loadSampleHTML()" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded font-medium transition">
+                            HTML Sample (3 Fields)
+                        </button>
+                        <button onclick="loadSampleText()" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded font-medium transition">
+                            Text Sample (3 Fields)
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2 italic">Note: JSON data shows more schema fields than HTML or plain text. This is expected!</p>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div id="loading-spinner" class="hidden my-8 flex items-center justify-center p-8">
+                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-300 h-12 w-12"></div>
+                    <span class="ml-4 text-gray-600 text-lg font-semibold">Processing your data...</span>
+                </div>
+            </div>
+
+            <!-- Schema Section -->
+            <div id="schema-section" class="hidden glass rounded-2xl shadow-2xl p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Data Schema</h2>
+                    <span id="field-count" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-semibold"></span>
+                </div>
+                <div id="schema-container" class="schema-grid"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results-section" class="hidden glass rounded-2xl shadow-2xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Extracted Data</h2>
+                    <button id="download-csv-btn" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all duration-200 transform hover:scale-105">
+                        <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download CSV
+                    </button>
+                </div>
+                <div id="results-table-container" class="overflow-x-auto max-h-[600px] rounded-lg border border-gray-200"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 p-4 rounded-lg shadow-2xl text-white max-w-sm hidden transform transition-all duration-300">
+        <div class="flex items-center">
+            <svg id="toast-icon" class="w-6 h-6 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="toast-message">Success!</span>
+        </div>
+    </div>
+
+    <script>
+        let processedJsonData = [];
+        let toastTimer;
+
+        const processBtn = document.getElementById('process-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const downloadCsvBtn = document.getElementById('download-csv-btn');
+        const inputData = document.getElementById('input-data');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const resultsSection = document.getElementById('results-section');
+        const schemaSection = document.getElementById('schema-section');
+        const tableContainer = document.getElementById('results-table-container');
+        const schemaContainer = document.getElementById('schema-container');
+        const fieldCount = document.getElementById('field-count');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toast-message');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        async function processData() {
+            const rawContent = inputData.value;
+            if (!rawContent.trim()) {
+                showToast('Please enter or upload data', 'error');
+                return;
+            }
+
+            loadingSpinner.classList.remove('hidden');
+            processBtn.disabled = true;
+            resultsSection.classList.add('hidden');
+            schemaSection.classList.add('hidden');
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: rawContent
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    let err = { error: errText };
+                    try {
+                        err = JSON.parse(errText);
+                    } catch (e) {}
+                    throw new Error(err.error || 'Processing failed');
+                }
+
+                const jsonData = await response.json();
+                console.log('=== PROCESSING NEW DATA ===');
+                console.log('Full response:', jsonData);
+                console.log('Response keys:', Object.keys(jsonData));
+                console.log('jsonData.data type:', typeof jsonData.data, 'is array:', Array.isArray(jsonData.data));
+                console.log('jsonData.types:', jsonData.types);
+                console.log('jsonData.types type:', typeof jsonData.types);
+                
+                let data = [];
+                let types = {};
+                
+                // STRICT extraction of data and types
+                if (jsonData.data && Array.isArray(jsonData.data)) {
+                    data = jsonData.data;
+                    console.log('[OK] Extracted data array with', data.length, 'records');
+                } else {
+                    throw new Error('Response missing data array');
+                }
+                
+                if (jsonData.types && typeof jsonData.types === 'object') {
+                    types = jsonData.types;
+                    console.log('[OK] Extracted types object with', Object.keys(types).length, 'fields:', Object.keys(types));
+                } else {
+                    console.warn('[WARNING] Response missing or invalid types object!');
+                    console.log('Fallback: reconstructing types from data...');
+                    // Reconstruct types from all records
+                    const allFields = new Set();
+                    data.forEach(record => {
+                        Object.keys(record).forEach(key => allFields.add(key));
+                    });
+                    allFields.forEach(field => {
+                        types[field] = 'string';
+                    });
+                    console.log('[OK] Reconstructed types:', types);
+                }
+                
+                processedJsonData = data;
+                console.log('About to call displaySchema with:', data.length, 'records and', Object.keys(types).length, 'field types');
+                displaySchema(data, types);
+                displayTable(data);
+                schemaSection.classList.remove('hidden');
+                resultsSection.classList.remove('hidden');
+                showToast(`Successfully processed ${data.length} records`, 'success');
+            } catch (err) {
+                console.error('ERROR:', err);
+                showToast(err.message || 'Error processing data', 'error');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+                processBtn.disabled = false;
+            }
+        }
+
+        function displaySchema(data, types = {}) {
+            console.log('DISPLAY_SCHEMA: function called');
+            console.log('  Input data:', data ? `array(${data.length})` : 'null');
+            console.log('  Input types is object:', types && typeof types === 'object');
+            console.log('  Input types keys:', Object.keys(types));
+            console.log('  Input types count:', Object.keys(types).length);
+            
+            if (!data || data.length === 0) {
+                console.warn('DISPLAY_SCHEMA: No data, returning');
+                return;
+            }
+
+            let fields = Object.keys(types);
+            console.log('DISPLAY_SCHEMA: after Object.keys(types):', fields);
+            console.log('  Fields length:', fields.length);
+            
+            if (fields.length === 0) {
+                console.warn('DISPLAY_SCHEMA: Types empty, fallback to data[0]');
+                fields = Object.keys(data[0] || {});
+                console.log('  Fallback fields:', fields);
+            }
+            
+            fieldCount.textContent = `${fields.length} Fields`;
+            schemaContainer.innerHTML = '';
+            
+            console.log('DISPLAY_SCHEMA: rendering', fields.length, 'fields');
+
+            fields.forEach((field, idx) => {
+                const type = types[field] || 'string';
+                console.log(`  [${idx}] field="${field}" type="${type}"`);
+                
+                let badgeClass = 'badge-other';
+                let displayType = 'Other';
+                
+                if (type === 'array') {
+                    badgeClass = 'badge-array';
+                    displayType = 'Array';
+                } else if (type === 'number') {
+                    badgeClass = 'badge-number';
+                    displayType = 'Number';
+                } else if (type === 'string') {
+                    badgeClass = 'badge-string';
+                    displayType = 'String';
+                } else if (type === 'boolean') {
+                    badgeClass = 'badge-boolean';
+                    displayType = 'Boolean';
+                } else if (type === 'datetime') {
+                    badgeClass = 'badge-datetime';
+                    displayType = 'DateTime';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'schema-card';
+                card.innerHTML = `
+                    <div class="font-semibold text-gray-900 mb-2">${field.replace(/_/g, ' ')}</div>
+                    <div class="text-sm text-gray-500 mb-2">Type</div>
+                    <div class="badge-type ${badgeClass}">${displayType}</div>
+                `;
+                schemaContainer.appendChild(card);
+                console.log(`  Added card #${idx+1} to DOM`);
+            });
+            
+            console.log('DISPLAY_SCHEMA: done, container has', schemaContainer.children.length, 'children');
+        }
+
+        function displayTable(data) {
+            if (!data || data.length === 0) {
+                tableContainer.innerHTML = '<p class="text-gray-500 p-8 text-center">No data</p>';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            let html = '<table class="w-full text-sm">';
+            html += '<thead class="bg-gradient-to-r from-blue-100 to-indigo-100 sticky top-0"><tr>';
+            headers.forEach(h => {
+                html += `<th class="px-4 py-3 text-left font-semibold text-gray-700">${h.replace(/_/g, ' ')}</th>`;
+            });
+            html += '</tr></thead>';
+            html += '<tbody class="divide-y divide-gray-200">';
+            data.forEach((row, idx) => {
+                html += `<tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50">`;
+                headers.forEach(h => {
+                    let val = row[h] === null || row[h] === undefined ? '' : String(row[h]);
+                    if (val.length > 50) val = val.substring(0, 50) + '...';
+                    html += `<td class="px-4 py-3 text-gray-700">${escapeHtml(val)}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            tableContainer.innerHTML = html;
+        }
+
+        function downloadCSV() {
+            if (processedJsonData.length === 0) {
+                showToast('No data to download', 'error');
+                return;
+            }
+
+            const headers = Object.keys(processedJsonData[0]);
+            const csvRows = [headers.join(',')];
+            processedJsonData.forEach(row => {
+                const values = headers.map(h => {
+                    let cell = row[h] === null || row[h] === undefined ? '' : String(row[h]);
+                    cell = cell.replace(/"/g, '""');
+                    if (cell.includes(',') || cell.includes('\n')) cell = `"${cell}"`;
+                    return cell;
+                });
+                csvRows.push(values.join(','));
+            });
+
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'data.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('CSV downloaded', 'success');
+        }
+
+        function showToast(msg, type) {
+            if (toastTimer) clearTimeout(toastTimer);
+            toastMessage.textContent = msg;
+            toast.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+            toast.classList.remove('hidden');
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function clearAll() {
+            inputData.value = '';
+            fileInput.value = '';
+            processedJsonData = [];
+            resultsSection.classList.add('hidden');
+            schemaSection.classList.add('hidden');
+            tableContainer.innerHTML = '';
+            schemaContainer.innerHTML = '';
+            showToast('Cleared', 'success');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    inputData.value = evt.target.result;
+                    showToast(`Loaded: ${file.name}`, 'success');
+                    processData();
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        processBtn.addEventListener('click', processData);
+        clearBtn.addEventListener('click', clearAll);
+        downloadCsvBtn.addEventListener('click', downloadCSV);
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500', 'bg-blue-100');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500', 'bg-blue-100');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('border-blue-500', 'bg-blue-100');
+            handleDrop(e);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    inputData.value = evt.target.result;
+                    showToast(`Loaded: ${file.name}`, 'success');
+                    processData();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // SAMPLE DATA LOADERS
+        function loadSampleJSON() {
+            const sample = JSON.stringify([
+                { product_name: "Laptop", price: 1299.99, in_stock: true, categories: ["electronics"], rating: 4.5 },
+                { product_name: "Mouse", price: 29.99, in_stock: true, categories: ["accessories"], rating: 4.2 },
+                { product_name: "Keyboard", price: 79.99, in_stock: false, categories: ["peripherals", "input"], rating: 4.3 }
+            ], null, 2);
+            inputData.value = sample;
+            showToast('Loaded JSON sample - click Process Data', 'success');
+        }
+
+        function loadSampleHTML() {
+            const sample = `<html>
+<head><title>Sample Page</title></head>
+<body>
+    <h1>Welcome to Our Store</h1>
+    <p>We sell the finest products at great prices!</p>
+    <div class="products">
+        <h2>Featured Products</h2>
+        <ul>
+            <li>Laptop - Professional grade computing</li>
+            <li>Mouse - Precision tracking</li>
+            <li>Keyboard - Mechanical switches</li>
+        </ul>
+    </div>
+</body>
+</html>`;
+            inputData.value = sample;
+            showToast('Loaded HTML sample (will have 3 fields) - click Process Data', 'success');
+        }
+
+        function loadSampleText() {
+            const sample = `This is a sample text document. 
+It contains plain text content without any special structure.
+The ETL pipeline will extract it and create basic metadata fields.
+Notice how the schema only shows 3 universal fields (type, source_index, total_items).
+This is expected behavior for unstructured data like plain text and HTML.`;
+            inputData.value = sample;
+            showToast('Loaded Text sample (will have 3 fields) - click Process Data', 'success');
+        }
+
+        // AUTO-TEST ON PAGE LOAD
+        window.addEventListener('load', async () => {
+            console.log('='.repeat(70));
+            console.log('AUTO-TEST: Starting schema test');
+            console.log('='.repeat(70));
+            
+            // Wait a bit for page to fully load
+            await new Promise(r => setTimeout(r, 500));
+            
+            const testData = JSON.stringify([
+                { product_name: "Laptop", price: 1299.99, in_stock: true, categories: ["electronics"], rating: 4.5 },
+                { product_name: "Mouse", price: 29.99, in_stock: true, categories: ["accessories"], rating: 4.2 }
+            ]);
+            
+            console.log('AUTO-TEST: Sending product data...');
+            inputData.value = testData;
+            await processData();
+            
+            console.log('AUTO-TEST: Product test complete');
+            console.log('AUTO-TEST: Schema section visible:', !schemaSection.classList.contains('hidden'));
+            console.log('AUTO-TEST: Schema container children:', schemaContainer.children.length);
+            console.log('='.repeat(70));
+        });
+    </script>
+</body>
+</html>

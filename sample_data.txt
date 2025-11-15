@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <title>Company Website</title>
+  </head>
+  <body>
+    <h1>Welcome to TechCorp</h1>
+    <p>We are a leading software development company.</p>
+    <a href="https://example.com">Visit our website</a>
+    <img src="logo.png" alt="Company Logo">
+  </body>
+</html>
+
+{"employee_id": 101, "name": "John Doe", "department": "Engineering", "salary": 85000}
+{"employee_id": 102, "name": "Jane Smith", "department": "Marketing", "salary": 65000}
+{"employee_id": 103, "name": "Bob Wilson", "department": "Sales", "salary": 70000}
+
+Project Status Report:
+Our Q4 initiative is progressing well. We have completed 75% of the planned features.
+The team is working on backend optimization and database performance tuning.
+Expected completion date is end of December 2025.
+
+Additional market research shows strong demand for our AI-powered analytics platform.
+Customer feedback has been overwhelmingly positive in beta testing phases.
+We plan to launch the product in early January 2026.
+
+{"project": "AI Analytics", "status": "in_progress", "completion": 0.75, "team_size": 12}
+{"project": "Mobile App", "status": "completed", "completion": 1.0, "team_size": 8}
+
+System maintenance window scheduled for next weekend.
+All services will be unavailable from 2 AM to 4 AM EST on Saturday.
+Please plan accordingly and notify your teams in advance.
+
+{"maintenance_id": "M001", "type": "scheduled", "duration_hours": 2, "impact": "high"}
+
+Final project budget allocation:
+Engineering: $500,000
+Marketing: $150,000
+Operations: $200,000
+Contingency: $50,000
+
+{"budget_category": "Engineering", "amount": 500000, "quarter": "Q4"}
+{"budget_category": "Marketing", "amount": 150000, "quarter": "Q4"}
+{"budget_category": "Operations", "amount": 200000, "quarter": "Q4"}

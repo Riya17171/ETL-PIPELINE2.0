@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ETL Diagnostic</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .output { background: #252526; padding: 10px; margin: 10px 0; border-left: 3px solid #007acc; }
+        .success { border-left-color: #4ec9b0; }
+        .error { border-left-color: #f48771; }
+        .info { border-left-color: #9cdcfe; }
+    </style>
+</head>
+<body>
+    <h1>ETL Pipeline Diagnostic</h1>
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `output ${type}`;
+            div.textContent = message;
+            log.appendChild(div);
+            console.log(message);
+        }
+
+        async function runTest() {
+            addLog('=== TEST 1: Product Data ===', 'info');
+            
+            const testData1 = JSON.stringify([
+                { product_name: "Laptop", price: 1299.99, in_stock: true, categories: ["electronics"], rating: 4.5 },
+                { product_name: "Mouse", price: 29.99, in_stock: true, categories: ["accessories"], rating: 4.2 }
+            ]);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    body: testData1,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+
+                const jsonData = await response.json();
+                addLog(`Response received. Keys: ${Object.keys(jsonData).join(', ')}`, 'success');
+                
+                const types = jsonData.types || {};
+                const data = jsonData.data || [];
+                
+                addLog(`Data records: ${data.length}`, 'success');
+                addLog(`Types object fields: ${Object.keys(types).length}`, 'success');
+                addLog(`Type keys: ${Object.keys(types).join(', ')}`, 'info');
+                
+                // Show each type
+                for (const [field, type] of Object.entries(types)) {
+                    addLog(`  - ${field}: ${type}`, 'info');
+                }
+
+                addLog('', 'info');
+                addLog('=== TEST 2: User Data ===', 'info');
+                
+                const testData2 = JSON.stringify([
+                    { name: "Alice", age: 30, active: true },
+                    { name: "Bob", age: 25, active: false }
+                ]);
+
+                const response2 = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    body: testData2,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+
+                const jsonData2 = await response2.json();
+                addLog(`Response received. Keys: ${Object.keys(jsonData2).join(', ')}`, 'success');
+                
+                const types2 = jsonData2.types || {};
+                const data2 = jsonData2.data || [];
+                
+                addLog(`Data records: ${data2.length}`, 'success');
+                addLog(`Types object fields: ${Object.keys(types2).length}`, 'success');
+                addLog(`Type keys: ${Object.keys(types2).join(', ')}`, 'info');
+                
+                // Show each type
+                for (const [field, type] of Object.entries(types2)) {
+                    addLog(`  - ${field}: ${type}`, 'info');
+                }
+
+                addLog('', 'info');
+                if (Object.keys(types).length !== Object.keys(types2).length) {
+                    addLog('SUCCESS: Schema changed between tests!', 'success');
+                } else {
+                    addLog('ERROR: Schema did not change!', 'error');
+                }
+
+            } catch (err) {
+                addLog(`ERROR: ${err.message}`, 'error');
+            }
+        }
+
+        // Run test
+        runTest();
+    </script>
+</body>
+</html>

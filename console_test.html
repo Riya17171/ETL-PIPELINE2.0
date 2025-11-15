@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ETL Console Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            line-height: 1.4;
+        }
+        #console {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            padding: 15px;
+            border-radius: 4px;
+            height: 600px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .log-line {
+            margin: 2px 0;
+        }
+        .log-info { color: #9cdcfe; }
+        .log-success { color: #4ec9b0; }
+        .log-error { color: #f48771; }
+        .log-warn { color: #dcdcaa; }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover { background: #1177bb; }
+    </style>
+</head>
+<body>
+    <h1>ETL Schema Test - Console Output</h1>
+    <button onclick="clearLog()">Clear Log</button>
+    <button onclick="startTest()">Start Test</button>
+    <div id="console"></div>
+
+    <script>
+        const consoleDiv = document.getElementById('console');
+        const logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const line = `[${timestamp}] ${message}`;
+            logs.push({ message: line, type });
+            
+            const div = document.createElement('div');
+            div.className = `log-line log-${type}`;
+            div.textContent = line;
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            logs.length = 0;
+            consoleDiv.innerHTML = '';
+        }
+
+        async function startTest() {
+            clearLog();
+            log('='.repeat(70), 'info');
+            log('Starting comprehensive schema test', 'success');
+            log('='.repeat(70), 'info');
+
+            try {
+                log('TEST 1: Sending product data...', 'info');
+                
+                const payload1 = JSON.stringify([
+                    { product_name: "Laptop", price: 1299.99, in_stock: true, categories: ["electronics"], rating: 4.5 },
+                    { product_name: "Mouse", price: 29.99, in_stock: true, categories: ["accessories"], rating: 4.2 }
+                ]);
+
+                const response1 = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    body: payload1,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+
+                const json1 = await response1.json();
+                
+                log(`Response keys: ${Object.keys(json1).join(', ')}`, 'info');
+                log(`Data records: ${json1.data.length}`, 'info');
+                log(`Types object count: ${Object.keys(json1.types).length}`, 'success');
+                log(`Type keys: ${Object.keys(json1.types).join(', ')}`, 'info');
+                log(`First record keys: ${Object.keys(json1.data[0]).join(', ')}`, 'info');
+
+                log('', 'info');
+                log('-'.repeat(70), 'info');
+                log('TEST 2: Sending user data...', 'info');
+
+                const payload2 = JSON.stringify([
+                    { name: "Alice", age: 30, active: true },
+                    { name: "Bob", age: 25, active: false }
+                ]);
+
+                const response2 = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    body: payload2,
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+
+                const json2 = await response2.json();
+                
+                log(`Response keys: ${Object.keys(json2).join(', ')}`, 'info');
+                log(`Data records: ${json2.data.length}`, 'info');
+                log(`Types object count: ${Object.keys(json2.types).length}`, 'success');
+                log(`Type keys: ${Object.keys(json2.types).join(', ')}`, 'info');
+                log(`First record keys: ${Object.keys(json2.data[0]).join(', ')}`, 'info');
+
+                log('', 'info');
+                log('='.repeat(70), 'info');
+                const sameFields = JSON.stringify(Object.keys(json1.types).sort()) === JSON.stringify(Object.keys(json2.types).sort());
+                if (sameFields) {
+                    log('RESULT: Schema is SAME (BUG)', 'error');
+                } else {
+                    log('RESULT: Schema CHANGED between tests (GOOD)', 'success');
+                }
+                log(`Test 1: ${Object.keys(json1.types).length} fields`, 'info');
+                log(`Test 2: ${Object.keys(json2.types).length} fields`, 'info');
+                log('='.repeat(70), 'info');
+
+            } catch (err) {
+                log(`ERROR: ${err.message}`, 'error');
+            }
+        }
+
+        // Auto-start on load
+        window.addEventListener('load', () => {
+            log('Page loaded. Auto-starting test...', 'info');
+            setTimeout(() => startTest(), 500);
+        });
+    </script>
+</body>
+</html>
